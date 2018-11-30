@@ -34,7 +34,7 @@ plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = [
-    "https://github.com/OctoPrint/OctoPrint-MQTT/archive/master.zip",
+    "OctoPrint-MQTT==0.8.0",
 ]
 
 ### --------------------------------------------------------------------------------------------------------------------
