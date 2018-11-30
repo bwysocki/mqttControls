@@ -6,7 +6,7 @@ import octoprint.plugin
 CONTROLLS_TOPIC_NAME = 'octoprint/plugin/mqtt/controlls'
 
 
-class MqttTestPlugin(octoprint.plugin.StartupPlugin):
+class MQTTControllsPlugin(octoprint.plugin.StartupPlugin):
     def on_after_startup(self):
         helpers = self._plugin_manager.get_helpers("mqtt", "mqtt_subscribe")
         subscribe = helpers["mqtt_subscribe"]
@@ -16,4 +16,5 @@ class MqttTestPlugin(octoprint.plugin.StartupPlugin):
         self._logger.info("Received a control message {topic}: {message}".format(**locals()))
 
 
-__plugin_implementations__ = [MqttTestPlugin()]
+__plugin_name__ = 'MQTT Controlls'
+__plugin_implementation__ = MQTTControllsPlugin()
