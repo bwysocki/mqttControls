@@ -1,11 +1,11 @@
-# OctoPrint-MQTT-Controlls
+# OctoPrint-MQTT-Controls
 
 ## Setup
 
 Install via the bundled [Plugin Manager](https://github.com/foosel/OctoPrint/wiki/Plugin:-Plugin-Manager)
 or manually using this URL:
 
-    https://bitbucket.org/9t-labs/octoprint-mqtt-controlls.git
+    https://bitbucket.org/9t-labs/octoprint-mqtt-controls.git
 
 **TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
 the plugin manager.
