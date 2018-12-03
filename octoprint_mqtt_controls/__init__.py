@@ -46,27 +46,26 @@ class MQTTControlsPlugin(StartupPlugin):
             *args, **kwargs
     ):
         self._logger.debug(
-            'Received a control message'.format(
+            'Received a control message at {topic}: {message}'.format(
                 topic=topic,
                 message=message
-            ),
-            extra={'topic': topic, 'message': message}
+            )
         )
 
         try:
             parsed_message = json.loads(message)
         except ValueError:
             self._logger.error(
-                'Could not parse the given message as JSON',
-                extra={'message': message}
+                'Could not parse the given message as JSON: {message}'.format(
+                    message=message)
             )
             return
 
         if not isinstance(parsed_message, (Mapping, dict)):
             self._logger.debug(
-                'Message is not a JSON-object', extra={
-                    'parsed_message': parsed_message
-                }
+                'Message is not a JSON-object: {parsed_message}'.format(
+                    parsed_message=parsed_message
+                )
             )
             return
 
@@ -84,14 +83,14 @@ class MQTTControlsPlugin(StartupPlugin):
             response_payload = resp.text
 
         self._logger.debug(
-            'Received a response from {url} with code {code}'.format(
+            'Received a response from {url} with code {code}:'
+            'requested: {request_payload} - received: {response_payload}'
+            .format(
                 url=resp.request.url,
                 code=resp.status_code,
+                request_payload=resp.request.json or '',
+                response_payload=response_payload,
             ),
-            extra={
-                'request_payload': resp.request.json or '',
-                'response_payload': response_payload,
-            }
         )
 
 
