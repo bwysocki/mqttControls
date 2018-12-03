@@ -49,13 +49,6 @@ class MQTTControlsPlugin(StartupPlugin):
             retained=None, qos=None,
             *args, **kwargs
     ):
-        self._logger.debug(
-            'Received a control message at {topic}: {message}'.format(
-                topic=topic,
-                message=message
-            )
-        )
-
         try:
             parsed_message = json.loads(message)
         except ValueError:
@@ -73,6 +66,22 @@ class MQTTControlsPlugin(StartupPlugin):
             )
             return
 
+        timestamp = parsed_message.get('timestamp')
+        if timestamp is None:
+            timestamp = '<unknown>'
+            self._logger.warning(
+                'Message passed without an identifying timestamp'
+            )
+
+        self._logger.debug(
+            'Received a control message {timestamp} at {topic}: {message}'
+            .format(
+                timestamp=timestamp,
+                topic=topic,
+                message=parsed_message
+            )
+        )
+
         request_method = parsed_message.get('method', 'GET')  # type: str
         request_url = self._get_url(parsed_message.get('endpoint', '/'))
         request_data = parsed_message.get('data')
@@ -88,9 +97,11 @@ class MQTTControlsPlugin(StartupPlugin):
             response_payload = resp.text
 
         self._logger.debug(
-            'Received a response from {url} with code {code}: '
-            "request body: '{request_body}' - response: {response_payload}"
+            'Response for message {timestamp} to {url} with code {code}:\n'
+            "request body: '{request_body}'\n"
+            "response: {response_payload}"
             .format(
+                timestamp=timestamp,
                 url=resp.request.url,
                 code=resp.status_code,
                 request_body=resp.request.body or '',
