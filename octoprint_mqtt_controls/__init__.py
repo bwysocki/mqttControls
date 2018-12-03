@@ -36,7 +36,7 @@ class MQTTControlsPlugin(StartupPlugin):
             self._api_session = self._create_api_session(
                 api_key=octo_settings.get(['api', 'key'])
             )
-            api_host = octo_settings.get(['server', 'host'])
+            api_host = octo_settings.get(['server', 'host']) or '0.0.0.0'
             api_port = octo_settings.get(['server', 'port'])
             self._api_base = 'http://{}:{}'.format(api_host, api_port)
         else:
