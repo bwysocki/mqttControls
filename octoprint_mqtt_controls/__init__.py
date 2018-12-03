@@ -16,11 +16,11 @@ CONTROLS_TOPIC_NAME = 'octoprint/plugin/mqtt/controls'
 class MQTTControlsPlugin(StartupPlugin):
     @staticmethod
     def _create_api_session(api_key=None):
-        s = requests.session()
+        s = requests.Session()
         headers = {'Content-Type': 'application/json'}
         if api_key:
             headers['X-Api-Key'] = api_key
-        s.headers.update(**headers)
+        s.headers.update(headers)
         return s
 
     def _get_url(self, endpoint):
@@ -74,11 +74,12 @@ class MQTTControlsPlugin(StartupPlugin):
         request_method = parsed_message.get('method', 'GET')  # type: str
         request_url = self._get_url(parsed_message.get('endpoint', '/'))
         request_data = parsed_message.get('data')
-        req = requests.Request(request_method, request_url)
-        if request_method.lower() == 'post' and request_data:
-            req.json = request_data
 
-        resp = self._api_session.send(req.prepare())
+        resp = self._api_session.request(
+            request_method,
+            request_url,
+            json=request_data
+        )
         try:
             response_payload = resp.json()
         except ValueError:
