@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 import json
-import urlparse
+from urlparse import urljoin
 from collections import Mapping
 
 from octoprint.plugin import StartupPlugin
@@ -11,7 +11,6 @@ import requests
 
 CONTROLS_TOPIC_NAME = 'octoprint/plugin/mqtt/controls'
 # TODO: implement a setting which will control it
-REST_API_HOST = '127.0.0.1'
 
 
 class MQTTControlsPlugin(StartupPlugin):
@@ -24,9 +23,8 @@ class MQTTControlsPlugin(StartupPlugin):
         s.headers.update()
         return s
 
-    @staticmethod
-    def _get_url(endpoint):
-        return urlparse.urljoin(REST_API_HOST, endpoint)
+    def _get_url(self, endpoint):
+        return urljoin(self._api_base, endpoint)
 
     def on_after_startup(self):
         helpers = self._plugin_manager.get_helpers('mqtt', 'mqtt_subscribe')
@@ -34,9 +32,13 @@ class MQTTControlsPlugin(StartupPlugin):
         if mqtt_subscribe:
             self._logger.info('Connecting to mqtt broker...')
             mqtt_subscribe(CONTROLS_TOPIC_NAME, self._on_mqtt_subscription)
+            octo_settings = settings()
             self._api_session = self._create_api_session(
-                api_key=settings().get(['api', 'key'])
+                api_key=octo_settings.get(['api', 'key'])
             )
+            api_host = octo_settings.get(['server', 'host'])
+            api_port = octo_settings.get(['server', 'port'])
+            self._api_base = 'http://{}:{}'.format(api_host, api_port)
         else:
             self._logger.error("Could not retrieve 'mqtt_subscribe' helper.")
 
