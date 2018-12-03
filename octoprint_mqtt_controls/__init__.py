@@ -20,7 +20,7 @@ class MQTTControlsPlugin(StartupPlugin):
         headers = {'Content-Type': 'application/json'}
         if api_key:
             headers['X-Api-Key'] = api_key
-        s.headers.update()
+        s.headers.update(**headers)
         return s
 
     def _get_url(self, endpoint):
