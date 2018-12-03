@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import json
 import urlparse
+from collections import Mapping
 
 from octoprint.plugin import StartupPlugin
 from octoprint.settings import settings
@@ -45,12 +46,29 @@ class MQTTControlsPlugin(StartupPlugin):
             *args, **kwargs
     ):
         self._logger.debug(
-            'Received a control message - {topic}: {message}'.format(
+            'Received a control message'.format(
                 topic=topic,
                 message=message
-            )
+            ),
+            extra={'topic': topic, 'message': message}
         )
-        parsed_message = json.loads(message)
+
+        try:
+            parsed_message = json.loads(message)
+        except ValueError:
+            self._logger.error(
+                'Could not parse the given message as JSON',
+                extra={'message': message}
+            )
+            return
+
+        if not isinstance(parsed_message, (Mapping, dict)):
+            self._logger.debug(
+                'Message is not a JSON-object', extra={
+                    'parsed_message': parsed_message
+                }
+            )
+            return
 
         request_method = parsed_message.get('method', 'GET')  # type: str
         request_url = self._get_url(parsed_message.get('endpoint', '/'))
