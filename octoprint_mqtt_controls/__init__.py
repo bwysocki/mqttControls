@@ -86,11 +86,11 @@ class MQTTControlsPlugin(StartupPlugin):
 
         self._logger.debug(
             'Received a response from {url} with code {code}:'
-            'requested: {request_payload} - received: {response_payload}'
+            'request body: {request_body} - response: {response_payload}'
             .format(
                 url=resp.request.url,
                 code=resp.status_code,
-                request_payload=resp.request.json or '',
+                request_body=resp.request.body or '',
                 response_payload=response_payload,
             ),
         )
