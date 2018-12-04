@@ -2,9 +2,11 @@ from __future__ import absolute_import
 
 from itertools import ifilter
 
+from .job_state import JobStateCommand
 from .printer_state import PrinterStateCommand
 
 commands = (
+    JobStateCommand,
     PrinterStateCommand,
 )
 
