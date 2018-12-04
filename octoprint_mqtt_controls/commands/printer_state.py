@@ -1,26 +1,10 @@
-from urlparse import urljoin
+from __future__ import absolute_import
 
-from .base import CommandBase
+from .base import ApiReportCommand
 
 
-class PrinterStateCommand(CommandBase):
-    command_name = 'printer_state'
-
-    STATUS_TOPIC = 'octoprint-controls/printer-state'
-
-    API_ENDPOINT = 'api/printer'
+class PrinterStateCommand(ApiReportCommand):
+    COMMAND_NAME = 'printer_state'
     REQUEST_METHOD = 'GET'
-
-    def execute(self):
-        resp = self.api_session.request(
-            self.REQUEST_METHOD,
-            urljoin(self.api_url_base, self.API_ENDPOINT),
-        )
-        payload = resp.json()
-        self.mqtt_publish(
-            self.STATUS_TOPIC,
-            payload,
-            retained=True,
-            qos=0,
-            allow_queueing=True
-        )
+    API_ENDPOINT = '/api/printer'
+    REPORT_TOPIC = 'octoprint-controls/state/printer'
