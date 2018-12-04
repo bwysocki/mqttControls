@@ -87,7 +87,7 @@ class MQTTControlsPlugin(StartupPlugin):
             except ValueError:
                 self._logger.error(
                     'Received a command message {timestamp} '
-                    'with invalid command name: name}'
+                    'with invalid command name: {name}'
                     .format(
                         timestamp=timestamp,
                         name=command_name
