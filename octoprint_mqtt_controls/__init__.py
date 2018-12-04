@@ -9,6 +9,8 @@ from octoprint.plugin import StartupPlugin
 from octoprint.settings import settings
 import requests
 
+from .commands import get_command
+
 CONTROLS_TOPIC_NAME = 'octoprint/plugin/mqtt/controls'
 # TODO: implement a setting which will control it
 
@@ -27,8 +29,11 @@ class MQTTControlsPlugin(StartupPlugin):
         return urljoin(self._api_url_base, endpoint)
 
     def on_after_startup(self):
-        helpers = self._plugin_manager.get_helpers('mqtt', 'mqtt_subscribe')
+        helpers = self._plugin_manager.get_helpers(
+            'mqtt', 'mqtt_subscribe', 'mqtt_publish')
         mqtt_subscribe = helpers.get('mqtt_subscribe')
+        mqtt_publish = helpers.get('mqtt_publish')
+
         if mqtt_subscribe:
             self._logger.info('Connecting to mqtt broker...')
             mqtt_subscribe(CONTROLS_TOPIC_NAME, self._on_mqtt_subscription)
@@ -41,6 +46,8 @@ class MQTTControlsPlugin(StartupPlugin):
             api_host = octo_settings.get(['server', 'host']) or '0.0.0.0'
             api_port = octo_settings.get(['server', 'port'])
             self._api_url_base = 'http://{}:{}'.format(api_host, api_port)
+
+            self._mqtt_publish = mqtt_publish
         else:
             self._logger.error("Could not retrieve 'mqtt_subscribe' helper.")
 
@@ -73,8 +80,41 @@ class MQTTControlsPlugin(StartupPlugin):
                 'Message passed without an identifying timestamp'
             )
 
+        command_name = parsed_message.get('command')
+        if command_name:
+            try:
+                command_class = get_command(command_name)
+            except ValueError:
+                self._logger.error(
+                    'Received a command message {timestamp} '
+                    'with invalid command name: name}'
+                    .format(
+                        timestamp=timestamp,
+                        name=command_name
+                    )
+                )
+            else:
+                self._logger.debug(
+                    'Received a command message {timestamp} '
+                    "with {command} command. Executing..."
+                    .format(
+                        timestamp=timestamp,
+                        command=command_name
+                    )
+                )
+                command = command_class(
+                    self._api_session,
+                    self._api_url_base,
+                    self._mqtt_publish,
+                    timestamp,
+                    parsed_message.get('options'),
+                    logger=self._logger
+                )
+                command.execute()
+            return
+
         self._logger.debug(
-            'Received a control message {timestamp} at {topic}: {message}'
+            'Received a request message {timestamp} at {topic}: {message}'
             .format(
                 timestamp=timestamp,
                 topic=topic,
