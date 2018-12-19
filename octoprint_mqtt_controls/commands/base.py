@@ -59,6 +59,7 @@ class ApiReportCommand(CommandBase):
         payload = resp.json()
         self.mqtt_publish(
             self.REPORT_TOPIC,
+            # TODO: create an encoding convention with backend
             payload,
             retained=True,
             qos=0,
