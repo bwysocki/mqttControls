@@ -4,7 +4,6 @@ from .base import ApiReportCommand
 
 
 class PrinterStateCommand(ApiReportCommand):
-    COMMAND_NAME = 'printer_state'
-    REQUEST_METHOD = 'GET'
-    API_ENDPOINT = '/api/printer'
-    REPORT_TOPIC = 'octoprint-controls/state/printer'
+    command_name = 'printer_state'
+    request_method = 'GET'
+    api_endpoint = '/api/printer'

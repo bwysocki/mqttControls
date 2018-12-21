@@ -5,17 +5,45 @@ import json
 from urlparse import urljoin
 from collections import Mapping
 
-from octoprint.plugin import StartupPlugin
+from octoprint.plugin import SettingsPlugin, StartupPlugin
+from octoprint.plugin.core import PluginCantInitialize
 from octoprint.settings import settings
 import requests
 
 from .commands import get_command
+from .util import cached_property
 
-CONTROLS_TOPIC_NAME = 'octoprint/plugin/mqtt/controls'
-# TODO: implement a setting which will control it
+CONTROLS_SUBTOPIC = 'mqtt-rest-api/'
+RESPONSE_SUBTOPIC = 'control-response/'
 
 
-class MQTTControlsPlugin(StartupPlugin):
+class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
+    """
+    Implementation of plugin. Connects mqtt to OctoPrint's REST API
+
+    Attributes:
+        api_session     request.Session with a set of headers,
+                        necessary for REST API connection.
+                        Use it to send requests
+
+        mqtt_publish    helper method of OctoPrint-MQTT plugin,
+                        used for publishing messages to the broker
+
+        api_url_base    base of REST API URL
+
+        controls_topic  MQTT topic used to retrieve control messages from
+
+        response_topic  MQTT topic used to send responses to
+    """
+
+    @cached_property
+    def controls_topic(self):
+        return self.base_topic + CONTROLS_SUBTOPIC
+
+    @cached_property
+    def response_topic(self):
+        return self.base_topic + RESPONSE_SUBTOPIC
+
     @staticmethod
     def _create_api_session(api_key=None):
         s = requests.Session()
@@ -26,30 +54,50 @@ class MQTTControlsPlugin(StartupPlugin):
         return s
 
     def _get_url(self, endpoint):
-        return urljoin(self._api_url_base, endpoint)
+        return urljoin(self.api_url_base, endpoint)
 
     def on_after_startup(self):
+        self._logger.info('Connecting to mqtt broker...')
+
+        mqtt_plugin_info = self._plugin_manager.get_plugin_info('mqtt')
+        if not mqtt_plugin_info:
+            raise PluginCantInitialize(
+                self._plugin_name,
+                'Cannot get implementation of OctoPrint-MQTT plugin'
+            )
+        self.base_topic = mqtt_plugin_info.implementation._settings.get([
+            'publish', 'baseTopic'
+        ])
+
         helpers = self._plugin_manager.get_helpers(
             'mqtt', 'mqtt_subscribe', 'mqtt_publish')
         mqtt_subscribe = helpers.get('mqtt_subscribe')
         mqtt_publish = helpers.get('mqtt_publish')
 
-        if mqtt_subscribe:
-            self._logger.info('Connecting to mqtt broker...')
-            mqtt_subscribe(CONTROLS_TOPIC_NAME, self._on_mqtt_subscription)
-
-            octo_settings = settings()
-            self._api_session = self._create_api_session(
-                api_key=octo_settings.get(['api', 'key'])
+        if not mqtt_publish:
+            raise PluginCantInitialize(
+                self._plugin_name,
+                "Cannot get 'mqtt_subscribe' helper method "
+                "from OctoPrint-MQTT plugin"
             )
+        self.mqtt_publish = mqtt_publish
 
-            api_host = octo_settings.get(['server', 'host']) or '0.0.0.0'
-            api_port = octo_settings.get(['server', 'port'])
-            self._api_url_base = 'http://{}:{}'.format(api_host, api_port)
+        if not mqtt_subscribe:
+            raise PluginCantInitialize(
+                self._plugin_name,
+                "Cannot get 'mqtt_subscribe' helper method "
+                "from OctoPrint-MQTT plugin"
+            )
+        mqtt_subscribe(self.controls_topic, self._on_mqtt_subscription)
 
-            self._mqtt_publish = mqtt_publish
-        else:
-            self._logger.error("Could not retrieve 'mqtt_subscribe' helper.")
+        octo_settings = settings()
+        self.api_session = self._create_api_session(
+            api_key=octo_settings.get(['api', 'key'])
+        )
+
+        api_host = octo_settings.get(['server', 'host']) or '0.0.0.0'
+        api_port = octo_settings.get(['server', 'port'])
+        self.api_url_base = 'http://{}:{}'.format(api_host, api_port)
 
     def _on_mqtt_subscription(
             self, topic, message,
@@ -102,14 +150,7 @@ class MQTTControlsPlugin(StartupPlugin):
                         command=command_name
                     )
                 )
-                command = command_class(
-                    self._api_session,
-                    self._api_url_base,
-                    self._mqtt_publish,
-                    timestamp,
-                    parsed_message.get('options'),
-                    logger=self._logger
-                )
+                command = command_class(self)
                 command.execute()
             return
 
@@ -126,7 +167,7 @@ class MQTTControlsPlugin(StartupPlugin):
         request_url = self._get_url(parsed_message.get('endpoint', '/'))
         request_data = parsed_message.get('data')
 
-        resp = self._api_session.request(
+        resp = self.api_session.request(
             request_method,
             request_url,
             json=request_data

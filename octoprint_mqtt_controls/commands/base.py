@@ -8,24 +8,11 @@ _default_logger = getLogger(__name__)
 class CommandBase(object):
     __metaclass__ = ABCMeta
 
-    def __init__(
-        self,
-        api_session,
-        api_url_base,
-        mqtt_publish,
-        timestamp,
-        options,
-        logger=_default_logger
-    ):
-        self.api_session = api_session
-        self.api_url_base = api_url_base
-        self.mqtt_publish = mqtt_publish
-        self.timestamp = timestamp
-        self.options = options
-        self.logger = logger
+    def __init__(self, plugin_instance):
+        self.plugin_instance = plugin_instance
 
     @abstractproperty
-    def COMMAND_NAME(self):
+    def command_name(self):
         """Used for command search"""
 
     @abstractmethod
@@ -35,31 +22,27 @@ class CommandBase(object):
 
 class ApiReportCommand(CommandBase):
     """
-    Makes an API request with given REQUEST_METHOD to given API_ENDPOINT
-    and redirects response to REPORT_TOPIC MQTT topic
+    Makes an API request with given `request_method` to given `api_endpoint`
+    and redirects response to the plugin report MQTT topic
     """
 
     @abstractproperty
-    def REQUEST_METHOD(self):
+    def request_method(self):
         """HTTP request method"""
 
     @abstractproperty
-    def API_ENDPOINT(self):
+    def api_endpoint(self):
         """API endpoint address"""
 
-    @abstractproperty
-    def REPORT_TOPIC(self):
-        """MQTT topic where the API request result is redirected"""
-
     def execute(self):
-        resp = self.api_session.request(
-            self.REQUEST_METHOD,
-            urljoin(self.api_url_base, self.API_ENDPOINT)
+        resp = self.plugin_instance.api_session.request(
+            self.request_method,
+            urljoin(self.plugin_instance.api_url_base, self.api_endpoint)
         )
         payload = resp.json()
-        self.mqtt_publish(
-            self.REPORT_TOPIC,
-            # TODO: create an encoding convention with backend
+        self.plugin_instance.mqtt_publish(
+            self.plugin_instance.response_topic,
+            # TODO: encode payload in UTF-16
             payload,
             retained=True,
             qos=0,

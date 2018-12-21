@@ -14,7 +14,7 @@ commands = (
 def get_command(command_name):
     try:
         result = next(
-            ifilter(lambda c: c.COMMAND_NAME == command_name, commands)
+            ifilter(lambda c: c.command_name == command_name, commands)
         )
     except StopIteration:
         raise ValueError('No command found')
