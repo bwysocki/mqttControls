@@ -39,10 +39,22 @@ class ApiReportCommand(CommandBase):
             self.request_method,
             urljoin(self.plugin_instance.api_url_base, self.api_endpoint)
         )
-        payload = resp.json()
+        self.plugin_instance._logger.debug(
+            "HTTP {method} {path}: {status} - {text!r}".format(
+                method=resp.request.method,
+                path=resp.request.path_url,
+                status=resp.status_code,
+                text=resp.text
+            )
+        )
+
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = resp.text
+
         self.plugin_instance.mqtt_publish(
             self.plugin_instance.response_topic,
-            # TODO: encode payload in UTF-16
             payload,
             retained=True,
             qos=0,

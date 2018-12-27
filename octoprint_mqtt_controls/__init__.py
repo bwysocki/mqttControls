@@ -89,6 +89,7 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
                 "from OctoPrint-MQTT plugin"
             )
         mqtt_subscribe(self.controls_topic, self._on_mqtt_subscription)
+        self._logger.debug('Subscribed to %s' % self.controls_topic)
 
         octo_settings = settings()
         self.api_session = self._create_api_session(
@@ -176,6 +177,8 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
             response_payload = resp.json()
         except ValueError:
             response_payload = resp.text
+
+        self.mqtt_publish(self.response_topic, response_payload)
 
         self._logger.debug(
             'Response for message {timestamp} to {url} with code {code}:\n'
