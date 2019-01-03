@@ -11,7 +11,7 @@ from octoprint.settings import settings
 import requests
 
 from .commands import get_command
-from .util import cached_property
+from .util import cached_property, urlencode_safe
 
 CONTROLS_SUBTOPIC = 'mqtt-rest-api/'
 RESPONSE_SUBTOPIC = 'control-response/'
@@ -126,7 +126,14 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
         if timestamp is None:
             timestamp = '<unknown>'
             self._logger.warning(
-                'Message passed without an identifying timestamp'
+                'Message passed without a timestamp'
+            )
+
+        uid = parsed_message.get('uid')
+        if uid is None:
+            uid = '<unknown>'
+            self._logger.warning(
+                'Message passed without an identifier'
             )
 
         command_name = parsed_message.get('command')
@@ -135,19 +142,19 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
                 command_class = get_command(command_name)
             except ValueError:
                 self._logger.error(
-                    'Received a command message {timestamp} '
+                    'Received a command message {uid} '
                     'with invalid command name: {name}'
                     .format(
-                        timestamp=timestamp,
+                        uid=uid,
                         name=command_name
                     )
                 )
             else:
                 self._logger.debug(
-                    'Received a command message {timestamp} '
+                    'Received a command message {uid} '
                     "with {command} command. Executing..."
                     .format(
-                        timestamp=timestamp,
+                        uid=uid,
                         command=command_name
                     )
                 )
@@ -156,40 +163,60 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
             return
 
         self._logger.debug(
-            'Received a request message {timestamp} at {topic}: {message}'
+            'Received a request message {uid} at {topic}: {message}'
             .format(
-                timestamp=timestamp,
+                uid=uid,
                 topic=topic,
                 message=parsed_message
             )
         )
 
-        request_method = parsed_message.get('method', 'GET')  # type: str
-        request_url = self._get_url(parsed_message.get('endpoint', '/'))
+        request_method = parsed_message.get('method', 'get').lower()
+        request_endpoint = parsed_message.get('endpoint', '/')
+        request_url = self._get_url(request_endpoint)
         request_data = parsed_message.get('data')
+
+        # send request data as query params for GET
+        request_kwargs = {}
+        if request_method == 'get':
+            request_kwargs = {
+                'params': urlencode_safe(request_data, safe=',')
+            }
+        # send request data as JSON body for POST
+        elif request_method == 'post':
+            request_kwargs = {
+                'json': request_data
+            }
 
         resp = self.api_session.request(
             request_method,
             request_url,
-            json=request_data
+            **request_kwargs
         )
-        try:
-            response_payload = resp.json()
-        except ValueError:
-            response_payload = resp.text
 
-        self.mqtt_publish(self.response_topic, response_payload)
-
+        response_message = {
+            'timestamp': timestamp,
+            'uid': uid,
+            'endpoint': request_endpoint,
+            'method': request_method,
+            'status_code': resp.status_code,
+            'headers': dict(resp.headers),
+            'body': resp.text,
+        }
+        self._logger.debug('Response message: %s' % response_message)
+        self.mqtt_publish(self.response_topic, response_message)
         self._logger.debug(
-            'Response for message {timestamp} to {url} with code {code}:\n'
+            "API at '{endpoint}' responded with code {code} for message {uid}"
             "request body: '{request_body}'\n"
-            "response: {response_payload}"
+            "response body: '{response_body}'\n"
+            "response headers: '{response_headers}'\n"
             .format(
-                timestamp=timestamp,
-                url=resp.request.url,
+                uid=uid,
+                endpoint=request_endpoint,
                 code=resp.status_code,
                 request_body=resp.request.body or '',
-                response_payload=response_payload,
+                response_body=resp.text,
+                response_headers=resp.headers
             ),
         )
 
