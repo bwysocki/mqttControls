@@ -1,22 +1,9 @@
 from __future__ import absolute_import
 
-from itertools import ifilter
+from .download_file import DownloadFile
+from .api import APIRequestCommand
 
-from .job_state import JobStateCommand
-from .printer_state import PrinterStateCommand
-
-commands = (
-    JobStateCommand,
-    PrinterStateCommand,
+COMMANDS = (
+    DownloadFile,
+    APIRequestCommand,
 )
-
-
-def get_command(command_name):
-    try:
-        result = next(
-            ifilter(lambda c: c.command_name == command_name, commands)
-        )
-    except StopIteration:
-        raise ValueError('No command found')
-
-    return result
