@@ -40,6 +40,12 @@ plugin_requires = [
     "OctoPrint-MQTT==0.8.0",
 ]
 
+extras_require = {
+    'dev': [
+        'pytest==4.0.2',
+    ]
+}
+
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point
 ### --------------------------------------------------------------------------------------------------------------------
@@ -89,6 +95,7 @@ setup_parameters = octoprint_setuptools.create_plugin_setup_parameters(
     url=plugin_url,
     license=plugin_license,
     requires=plugin_requires,
+    extra_requires=extras_require,
     additional_packages=plugin_additional_packages,
     ignored_packages=plugin_ignored_packages,
     additional_data=plugin_additional_data
