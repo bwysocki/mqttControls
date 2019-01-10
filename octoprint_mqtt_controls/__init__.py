@@ -2,20 +2,15 @@
 from __future__ import absolute_import
 
 import os
-import json
-from urlparse import urljoin
-from collections import Mapping
 
 from octoprint.plugin import SettingsPlugin, StartupPlugin
 from octoprint.plugin.core import PluginCantInitialize
 from octoprint.settings import settings
-import requests
 
 from .commands import COMMANDS
 from .util import cached_property, urlencode_safe
 
-REST_API_SUBTOPIC = 'mqtt-rest-api/'
-RESPONSE_SUBTOPIC = 'control-response/'
+DEFAULT_UPLOAD_DIR = '~/.octoprint/uploads'
 
 
 class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
@@ -32,13 +27,16 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
 
         response_topic  MQTT topic used to send responses to
     """
+    def __init__(self):
+        super(MQTTControlsPlugin, self).__init__()
+        self.octoprint_settings = settings()
 
-    def get_settings_defaults(self):
-        return {
-            'downloadLocation': os.path.expanduser(
-                '~/.octoprint/downloads'
-            )
-        }
+    @cached_property
+    def uploads_location(self):
+        return os.path.expanduser(
+            self.octoprint_settings.get(['folder', 'uploads'])
+            or DEFAULT_UPLOAD_DIR
+        )
 
     def _subscribe_commands(self, mqtt_subscribe):
         for command_class in COMMANDS:
@@ -53,9 +51,13 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
             )
 
     def _create_file_download_directory(self):
-        download_location = self._settings.get(['downloadLocation'])
-        if not os.path.exists(download_location):
-            os.makedirs(download_location)
+        if not os.path.exists(self.uploads_location):
+            os.makedirs(self.uploads_location)
+
+            self._logger.info(
+                'Created directory for file uploads: %r'
+                % self.uploads_location
+            )
 
     def on_after_startup(self):
         self._create_file_download_directory()
@@ -91,15 +93,18 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
                 "Cannot get 'mqtt_subscribe' helper method "
                 "from OctoPrint-MQTT plugin"
             )
-        octo_settings = settings()
-        self.api_key = octo_settings.get(['api', 'key'])
+        self.api_key = self.octoprint_settings.get(['api', 'key'])
 
-        api_host = octo_settings.get(['server', 'host']) or '0.0.0.0'
-        api_port = octo_settings.get(['server', 'port'])
+        api_host = self.octoprint_settings.get(['server', 'host']) or '0.0.0.0'
+        api_port = self.octoprint_settings.get(['server', 'port'])
         self.api_url_base = 'http://{}:{}'.format(api_host, api_port)
 
         self._subscribe_commands(mqtt_subscribe)
 
 
 __plugin_name__ = 'MQTT Controls'
-__plugin_implementation__ = MQTTControlsPlugin()
+
+
+def __plugin_load__():
+    global __plugin_implementation__
+    __plugin_implementation__ = MQTTControlsPlugin()

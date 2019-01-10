@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-from .download_file import DownloadFile
 from .api import APIRequestCommand
+from .download_file import DownloadFile
 
 COMMANDS = (
-    DownloadFile,
     APIRequestCommand,
+    DownloadFile,
 )
