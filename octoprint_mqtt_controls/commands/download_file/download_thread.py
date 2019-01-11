@@ -59,7 +59,7 @@ class DownloadThread(Thread):
     def _report_failure(self, exception):
         self._report({
             'progress': Progress.error.value,
-            'reason': repr(exception)
+            'reason': str(exception)
         })
 
     def _report_success(self):
