@@ -5,10 +5,11 @@ import os
 
 from octoprint.plugin import SettingsPlugin, StartupPlugin
 from octoprint.plugin.core import PluginCantInitialize
-from octoprint.settings import settings
+from octoprint.settings import settings as get_octoprint_settings
 
 from .commands import COMMANDS
 from .util import cached_property, urlencode_safe
+from .settings import uploads_location
 
 DEFAULT_UPLOAD_DIR = '~/.octoprint/uploads'
 
@@ -29,7 +30,7 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
     """
     def __init__(self):
         super(MQTTControlsPlugin, self).__init__()
-        self.octoprint_settings = settings()
+        self.octoprint_settings = get_octoprint_settings()
 
     @cached_property
     def uploads_location(self):
@@ -51,12 +52,12 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
             )
 
     def _create_file_download_directory(self):
-        if not os.path.exists(self.uploads_location):
-            os.makedirs(self.uploads_location)
+        location = uploads_location()
+        if not os.path.exists(location):
+            os.makedirs(location)
 
             self._logger.info(
-                'Created directory for file uploads: %r'
-                % self.uploads_location
+                'Created directory for file uploads: %r' % location
             )
 
     def on_after_startup(self):
@@ -93,12 +94,6 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
                 "Cannot get 'mqtt_subscribe' helper method "
                 "from OctoPrint-MQTT plugin"
             )
-        self.api_key = self.octoprint_settings.get(['api', 'key'])
-
-        api_host = self.octoprint_settings.get(['server', 'host']) or '0.0.0.0'
-        api_port = self.octoprint_settings.get(['server', 'port'])
-        self.api_url_base = 'http://{}:{}'.format(api_host, api_port)
-
         self._subscribe_commands(mqtt_subscribe)
 
 

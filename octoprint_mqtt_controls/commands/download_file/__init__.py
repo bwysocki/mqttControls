@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 from threading import Lock
 
+from ...settings import uploads_location
 from ..base import CommandBase
 from .download_thread import DownloadThread
 
@@ -23,10 +24,6 @@ def _pop_download_thread(uid):
 class DownloadFile(CommandBase):
     subtopic = 'download-file/command'
     report_subtopic = 'download-file/report'
-
-    def _get_file_path(self, filename):
-        """Get full path to the target download file"""
-        return os.path.join(self.plugin_instance.uploads_location, filename)
 
     def execute(self, topic, payload, *args, **kwargs):
         uid = payload['uid']
@@ -52,7 +49,7 @@ class DownloadFile(CommandBase):
                 uid,
                 timestamp,
                 url,
-                self._get_file_path(filename),
+                filename,
                 md5,
                 self.report
             )

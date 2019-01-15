@@ -1,8 +1,10 @@
-import requests
+from __future__ import absolute_import
 
-from urlparse import urljoin
+import requests
+from octoprint.settings import settings
 
 from .base import CommandBase
+from ..util.api import get_endpoint_url
 
 RESPONSE_SUBTOPIC = 'control-response/'
 
@@ -13,21 +15,18 @@ class APIRequestCommand(CommandBase):
 
     def __init__(self, *args, **kwargs):
         super(APIRequestCommand, self).__init__(*args, **kwargs)
+        octoprint_settings = settings()
         self.api_session = self._create_api_session(
-            self.plugin_instance.api_key
+            octoprint_settings.get(['api', 'key'])
         )
-        self.api_url_base = self.plugin_instance.api_url_base
 
-    def _create_api_session(self, api_key):
+    def _create_api_session(self, api_key=None):
         s = requests.Session()
         headers = {'Content-Type': 'application/json'}
         if api_key:
             headers['X-Api-Key'] = api_key
         s.headers.update(headers)
         return s
-
-    def _get_url(self, endpoint):
-        return urljoin(self.api_url_base, endpoint)
 
     def execute(self, topic, payload, *args, **kwargs):
         uid = payload['uid']
@@ -44,7 +43,7 @@ class APIRequestCommand(CommandBase):
 
         response = self.api_session.request(
             method,
-            self._get_url(endpoint),
+            get_endpoint_url(endpoint),
             json=data
         )
         response_payload = response.text

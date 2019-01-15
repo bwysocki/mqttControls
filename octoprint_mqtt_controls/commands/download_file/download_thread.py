@@ -1,9 +1,12 @@
 from __future__ import absolute_import
 
 import hashlib
+import os
 from threading import Event, Thread
 from urllib import urlretrieve
 
+from ...settings import uploads_location
+from ...util import api_request, cached_property
 from .exceptions import ChecksumVerificationError, StopDownload
 from .progress import Progress
 
@@ -43,6 +46,11 @@ class DownloadThread(Thread):
 
         super(DownloadThread, self).__init__()
 
+    @cached_property
+    def _file_path(self):
+        """Get full path to the target download file"""
+        return os.path.join(uploads_location(), self.filename)
+
     def schedule_to_stop(self):
         """Schedule the thread to stop"""
         self._should_stop.set()
@@ -56,10 +64,10 @@ class DownloadThread(Thread):
 
         self._report_func(report_data)
 
-    def _report_failure(self, exception):
+    def _report_failure(self, reason):
         self._report({
             'progress': Progress.error.value,
-            'reason': str(exception)
+            'reason': reason
         })
 
     def _report_success(self):
@@ -82,7 +90,7 @@ class DownloadThread(Thread):
 
         self._report_progress(*args)
 
-    def _verify_file_hash(self, filename=None):
+    def _verify_file_hash(self, file_path=None):
         """
         Calculate hash of the downloaded file and compare it to the given
         checksum (if provided).
@@ -91,9 +99,9 @@ class DownloadThread(Thread):
         if not self.md5:
             return
 
-        filename = filename or self.filename
+        file_path = file_path or self._file_path
         md5_hash = hashlib.md5()
-        with open(filename, 'rb') as f:
+        with open(file_path, 'rb') as f:
             for chunk in iter(lambda: f.read(4096), b''):
                 md5_hash.update(chunk)
 
@@ -104,14 +112,35 @@ class DownloadThread(Thread):
                 calculated=calculated_md5
             )
 
+    def _printjob_request(self):
+        return api_request(
+            'POST',
+            '/api/files/local',
+            data={
+                'select': True,
+                'print': True,
+            },
+            files={
+                'file': (
+                    self.filename,
+                    open(self._file_path, 'rb'),
+                    'application/octet-stream',
+                )
+            },
+        )
+
     def run(self):
         try:
-            filename, headers = urlretrieve(
-                self.url, self.filename, self._reporthook)
-            self._verify_file_hash(filename)
+            file_path, headers = urlretrieve(
+                self.url, self._file_path, self._reporthook)
+            self._verify_file_hash(file_path)
         except StopDownload:
             self._report_stopped()
         except Exception as e:
-            self._report_failure(e)
+            self._report_failure(str(e))
         else:
-            self._report_success()
+            resp = self._printjob_request()
+            if resp.ok:
+                self._report_success()
+            else:
+                self._report_failure(resp.status)
