@@ -65,7 +65,7 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
 
         self._logger.info('Connecting to mqtt broker...')
 
-        mqtt_plugin_info = self._plugin_manager.get_plugin_info('mqtt')
+        mqtt_plugin_info = self._plugin_manager.get_plugin_info('mqttaws')
         if not mqtt_plugin_info:
             raise PluginCantInitialize(
                 self._plugin_name,
@@ -76,14 +76,14 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
         ])
 
         helpers = self._plugin_manager.get_helpers(
-            'mqtt', 'mqtt_subscribe', 'mqtt_publish')
-        mqtt_subscribe = helpers.get('mqtt_subscribe')
-        mqtt_publish = helpers.get('mqtt_publish')
+            'mqttaws', 'mqttaws_subscribe', 'mqttaws_publish')
+        mqtt_subscribe = helpers.get('mqttaws_subscribe')
+        mqtt_publish = helpers.get('mqttaws_publish')
 
         if not mqtt_publish:
             raise PluginCantInitialize(
                 self._plugin_name,
-                "Cannot get 'mqtt_subscribe' helper method "
+                "Cannot get 'mqttaws_subscribe' helper method "
                 "from OctoPrint-MQTT plugin"
             )
         self.mqtt_publish = mqtt_publish
@@ -91,7 +91,7 @@ class MQTTControlsPlugin(SettingsPlugin, StartupPlugin):
         if not mqtt_subscribe:
             raise PluginCantInitialize(
                 self._plugin_name,
-                "Cannot get 'mqtt_subscribe' helper method "
+                "Cannot get 'mqttaws_subscribe' helper method "
                 "from OctoPrint-MQTT plugin"
             )
         self._subscribe_commands(mqtt_subscribe)
